@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+
+# shellcheck disable=SC1090,SC1091,SC2034,SC1091
+
+[ -z "$PS1" ] && return
+
+if [ -f /etc/bashrc ]
+    then
+        source /etc/bashrc
+fi
+
+export GIT_SSH_COMMAND="ssh -o 'CheckHostIP=no' -o 'StrictHostKeyChecking=no' -o 'ConnectTimeout=5' -i ~/.ssh/sbatc.priv"
+
+function GetIP(){
+    ip -f inet a | command grep -i 'inet' | awk '{print $2}' | command grep -Ev ^127 | sed 's/\/24//g' | sort -n | tr '\n' ',' | sed 's/,/, /g' | sed 's/\, $//g'
+}
+
+# Determine the hostname
+THISBOX=$(hostname -f | awk -F '.' '{print $1}')
+
+function DiskAlert(){
+    LOOP=0
+    while IFS= read -r LINE
+        do
+            FILESYSTEM=$(echo "$LINE" | awk -F ',' '{print $1}')
+            SIZE=$(echo "$LINE" | awk -F ',' '{print $2}')
+            USED=$(echo "$LINE" | awk -F ',' '{print $3}')
+            AVAIL=$(echo "$LINE" | awk -F ',' '{print $4}')
+            USAGE=$(echo "$LINE" | awk -F ',' '{print $5}' | tr -d '%')
+            MOUNT=$(echo "$LINE" | awk -F ',' '{print $6}')
+            if [[ "$USAGE" -ge '90' ]]
+                then
+                    if [[ "$LOOP" -eq '0' ]]
+                        then
+                            echo -en "\n\nDISK ALERTS:"
+                            ((LOOP++))
+                    fi
+                    echo -en "\n\t${FILESYSTEM} ${SIZE} ${USED} ${AVAIL} ${USAGE}% ${MOUNT}"
+            fi
+        done < <(df -hP --local | command grep -Ei '^/dev' | command grep -Ev '^/dev/loop|^/dev/sr[0-9]{1}' | sed -r 's/\ |\t/,/g' | sed -r 's/\,{2,}/\,/g')
+}
+
+function ConnectedClients(){
+    /usr/bin/netstat --verbose --wide --extend --programs --all --tcp --udp -4 | grep -i 'ESTABLISHED nut' | grep -Ev '0\.0\.0\.0|localhost' | awk '{print $5}' | awk -F ':' '{print $1}' | sed -r 's/([A-Za-z0-9]+)\.int\.snyderfamily\.co/\1/g' | tr '\n' ',' | sed 's/,/, /g' | sed -r 's/,$|, $//g'
+}
+
+# User specific variables
+# Shell Colors
+{
+NORMAL_TEXT="\e[39m"
+BLACK_TEXT="\e[30m"
+RED_TEXT="\e[31m"
+GREEN_TEXT="\e[32m"
+YELLOW_TEXT="\e[33m"
+BLUE_TEXT="\e[34m"
+MAGENTA_TEXT="\e[35m"
+CYAN_TEXT="\e[36m"
+LIGHT_GRAY_TEXT="\e[37m"
+DARK_GRAY_TEXT="\e[90m"
+LIGHT_RED_TEXT="\e[91m"
+LIGHT_GREEN_TEXT="\e[92m"
+LIGHT_YELLOW_TEXT="\e[93m"
+LIGHT_BLUE_TEXT="\e[94m"
+LIGHT_MAGENTA_TEXT="\e[95m"
+LIGHT_CYAN_TEXT="\e[96m"
+WHITE_TEXT="\e[97m"
+NORMAL_BACKGROUND="\e[49m"
+BLACK_BACKGROUND="\e[40m"
+RED_BACKGROUND="\e[41m"
+GREEN_BACKGROUND="\e[42m"
+YELLOW_BACKGROUND="\e[43m"
+BLUE_BACKGROUND="\e[44m"
+MAGENTA_BACKGROUND="\e[45m"
+CYAN_BACKGROUND="\e[46m"
+LIGHT_GRAY_BACKGROUND="\e[47m"
+DARK_GRAY_BACKGROUND="\e[100m"
+LIGHT_RED_BACKGROUND="\e[101m"
+LIGHT_GREEN_BACKGROUND="\e[102m"
+LIGHT_YELLOW_BACKGROUND="\e[103m"
+LIGHT_BLUE_BACKGROUND="\e[104m"
+LIGHT_MAGENTA_BACKGROUND="\e[105m"
+LIGHT_CYAN_BACKGROUND="\e[106m"
+WHITE_BACKGROUND="\e[107m"
+}
+
+# Initialize the ConnectedClients variable
+CC=""
+
+# PS1 Prompt Logic
+if [[ "$THISBOX" = 'docker' ]]
+    then
+        TITLE="DOCKER SERVER"
+elif [[ "$THISBOX" = 'plex' ]]
+    then
+        TITLE="PLEX MEDIA SERVER"
+elif [[ "$THISBOX" = 'ansible' ]]
+    then
+        TITLE="ANSIBLE AUTOMATION SERVER"
+elif [[ "$THISBOX" = 'alloy' ]]
+    then
+        TITLE="GRAFANA ALLOY SERVER"
+elif [[ "$THISBOX" = 'nut' ]]
+    then
+        TITLE="NETWORK UPS TOOLS SERVER"
+        CC="[ CONNECTED CLIENTS: $(ConnectedClients) ]\n"
+elif [[ "$THISBOX" = 'hicken-linux' ]]
+    then
+        TITLE="HICKEN LINUX WORKSTATION"
+elif [[ "$THISBOX" = 'alexander-rhel' ]]
+    then
+        TITLE="ALEXANDER'S LINUX WORKSTATION"
+elif [[ "$THISBOX" = 'towerzilla' ]]
+    then
+        TITLE="TOWERZILLA SERVER"
+    else
+        TITLE="UNKNOWN SERVER"
+fi
+
+if [[ "$THISBOX" = 'ansible' ]]
+    then
+        if [[ -f "${HOME}/venv/bin/activate" ]]
+            then
+                source "${HOME}/venv/bin/activate"
+        fi
+fi
+
+PS1="\n[ ${WHITE_BACKGROUND}${BLUE_TEXT}${TITLE}${NORMAL_TEXT}${NORMAL_BACKGROUND} ($(cat /etc/system-release)) ]\n[ USER: \u ]\n[ HOST: $THISBOX ($(GetIP)) ]\n${CC}[ You're in (( \w )) ]\n$(DiskAlert)\n\n--> "
+
+if rpm -q diffutils >/dev/null 2>&1
+    then
+        if [[ $(type -t diff) = 'alias' ]]
+            then
+                command unalias diff
+        fi
+        if [[ ! $(type -t diff) = 'function' ]]
+            then
+                function diff() {
+                    command diff --side-by-side --suppress-common-lines --ignore-case --ignore-all-space --ignore-blank-lines --color=always "$@"
+                }
+            else
+                echo -en "DIFF (on this system) is currently: $(type -t diff)\n"
+        fi
+fi
+
+
+if rpm -q rsync >/dev/null 2>&1
+    then
+        if [[ $(type -t rsync) = 'alias' ]]
+            then
+                command unalias rsync
+        fi
+        if [[ ! $(type -t rsync) = 'function' ]]
+            then
+                function rsync() {
+                    command rsync --archive --verbose --human-readable --checksum --progress "$@"
+                }
+            else
+                echo -en "RSYNC (on this system) is currently: $(type -t rsync)\n"
+        fi
+fi
+
+alias ll='ls -Alh --color=auto'
+alias lll='ls -Alh --color=auto'
+alias ls='ls -Alh --color=auto'
+alias LL='ls -Alh --color=auto'
+alias LS='ls -Alh --color=auto'
+##

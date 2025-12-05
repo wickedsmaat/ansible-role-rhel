@@ -1,0 +1,305 @@
+---
+- name: Send the SSH Configuration Files
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: '0644'
+  with_items:
+    - { src: /home/ansible/roles/rhel/files/ssh/00-default.conf, dest: /etc/ssh/sshd_config.d/00-default.conf }
+    - { src: /home/ansible/roles/rhel/files/ssh/10-ansible.conf, dest: /etc/ssh/sshd_config.d/10-ansible.conf }
+    - { src: /home/ansible/roles/rhel/files/ssh/20-misteralexander.conf, dest: /etc/ssh/sshd_config.d/20-misteralexander.conf }
+    - { src: /home/ansible/roles/rhel/files/ssh/sshd_config.txt, dest: /etc/ssh/sshd_config }
+  tags: ssh_configs
+
+- name: Ensure the SSH Directory Exists
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  with_items:
+    - { path: /root/.ssh }
+    - { path: /etc/skel/.ssh }
+  tags: ssh_dir
+
+- name: RestartSSH
+  ansible.builtin.systemd_service:
+    name: sshd
+    state: restarted
+    enabled: true
+  tags: restart_ssh
+
+- name: Ensure Red Hat Subscription
+  community.general.redhat_subscription:
+    state: present
+    activationkey: SnyderFamilyRHSMKey
+    org_id: 14225089
+    syspurpose:
+      usage: production
+      role: RedHat Enterprise Linux Server
+      service_level_agreement: Self-Support
+      sync: true
+    force_register: true
+  tags: rhsm
+
+- name: Ensure standard user exists
+  ansible.builtin.user:
+    name: misteralexander
+    state: present
+    create_home: true
+    shell: /bin/bash
+    password: "$6$WqvJ6oEMR5o/34cr$xrA3j86ZwoKi9nihuj9QxZu5yLKuxYQuNEF7JNSRxbNemiT/QIIN9K6tcooQHg8CnOikD.X3nHqdnIn82cGPy/"
+    update_password: always
+  tags: user_setup
+
+- name: Ensure Sudoers File Exists
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: '0440'
+  with_items:
+    - { src: /home/ansible/roles/rhel/templates/rhel/sudoers.j2, dest: '/etc/sudoers.d/010-ansible', name: 'ansible' }
+    - { src: /home/ansible/roles/rhel/templates/rhel/sudoers.j2, dest: '/etc/sudoers.d/020-misteralexander', name: 'misteralexander' }
+  tags: sudoers
+
+- name: Make sure ROOT account isn't locked
+  ansible.builtin.user:
+    name: root
+    password: "$6$tXnCTG3ybl9jq22d$1SHzTGNxpVrdH9HzIk8PTnnDSkhmgfC5b68Uctnh3dwznY1KSpmxKO/vxaBKkUp004n.hJPQ6uLCpoz3dLf33/"
+    state: present
+    shell: /bin/bash
+    update_password: always
+    password_lock: false
+  tags: root_setup
+
+- name: Copy config files to multiple destinations
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: '0644'
+    force: true
+  with_items:
+    - { src: /home/ansible/roles/rhel/files/bashrc.txt, dest: '/root/.bashrc', owner: root, group: root }
+    - { src: /home/ansible/roles/rhel/files/bashrc.txt, dest: '/etc/skel/.bashrc', owner: root, group: root }
+    - { src: /home/ansible/roles/rhel/files/bashrc.txt, dest: '/home/misteralexander/.bashrc', owner: misteralexander, group: misteralexander }
+    - { src: /home/ansible/roles/rhel/files/vimrc.txt, dest: '/root/.vimrc', owner: root, group: root }
+    - { src: /home/ansible/roles/rhel/files/vimrc.txt, dest: '/etc/skel/.vimrc', owner: root, group: root }
+    - { src: /home/ansible/roles/rhel/files/vimrc.txt, dest: '/home/misteralexander/.vimrc', owner: misteralexander, group: misteralexander }
+    - { src: /home/ansible/roles/rhel/files/bash_profile.txt, dest: '/root/.bash_profile', owner: root, group: root }
+    - { src: /home/ansible/roles/rhel/files/bash_profile.txt, dest: '/etc/skel/.bash_profile', owner: root, group: root }
+    - { src: /home/ansible/roles/rhel/files/bash_profile.txt, dest: '/home/misteralexander/.bash_profile', owner: misteralexander, group: misteralexander }
+    - { src: /home/ansible/roles/rhel/files/bash_logout.txt, dest: '/root/.bash_logout', owner: root, group: root }
+    - { src: /home/ansible/roles/rhel/files/bash_logout.txt, dest: '/etc/skel/.bash_logout', owner: root, group: root }
+    - { src: /home/ansible/roles/rhel/files/bash_logout.txt, dest: '/home/misteralexander/.bash_logout', owner: misteralexander, group: misteralexander }
+  tags: user_configs
+
+- name: Copy authorized_keys template to multiple destinations
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: '0644'
+  with_items:
+    - { src: /home/ansible/roles/rhel/templates/authorized_keys.j2, dest: '/root/.ssh/authorized_keys', owner: root, group: root }
+    - { src: /home/ansible/roles/rhel/templates/authorized_keys.j2, dest: '/etc/skel/.ssh/authorized_keys', owner: root, group: root }
+    - { src: /home/ansible/roles/rhel/templates/authorized_keys.j2, dest: '/home/misteralexander/.ssh/authorized_keys', owner: misteralexander, group: misteralexander }
+  tags: ssh_keys
+
+- name: Ensure SELinux is disabled
+  ansible.posix.selinux:
+    state: disabled
+  tags: selinux
+  when:
+    - ansible_selinux is defined
+    - (ansible_selinux.status | lower) != 'disabled'
+
+- name: Ensure the firewall is stopped
+  ansible.builtin.systemd_service:
+    name: firewalld
+    state: stopped
+    enabled: false
+  failed_when: false
+  tags: firewall
+
+- name: Disable IPv6
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: 1
+    state: present
+    reload: true
+  with_items:
+    - net.ipv6.conf.all.disable_ipv6
+    - net.ipv6.conf.default.disable_ipv6
+    - net.ipv6.conf.lo.disable_ipv6
+  tags: ipv6
+
+- name: SystemdUpdate
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  tags: systemd
+
+- name: Configure DNF to use IPv4
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/dnf.conf
+    line: 'ip_resolve=4'
+    insertafter: '^\[main\]'
+    owner: root
+    group: root
+    mode: '0644'
+  tags: ipv4
+
+- name: Remove Unwanted Packages
+  ansible.builtin.dnf:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - firewalld
+    - firewalld-filesystem
+    - python3-firewall
+    - firefox
+    - chromium
+    - microsoft-edge-stable
+  tags: remove_packages
+
+- name: Kill the DNF Cache
+  ansible.builtin.dnf:
+    expire-cache: true
+  tags: cache_killer
+
+- name: Disable all repositories
+  ansible.builtin.command:
+    argv:
+      - subscription-manager
+      - repos
+      - --disable=*
+  register: disable_repos
+  changed_when: disable_repos.rc == 0
+  failed_when: disable_repos.rc != 0
+  tags: disable_repos
+
+- name: Enable required RHSM repos (idempotent)
+  community.general.rhsm_repository:
+    name: "{{ item }}"
+    state: enabled
+  loop:
+    - "rhel-{{ ansible_distribution_major_version }}-for-x86_64-baseos-rpms"
+    - "rhel-{{ ansible_distribution_major_version }}-for-x86_64-appstream-rpms"
+    - "rhel-{{ ansible_distribution_major_version }}-for-x86_64-extensions-rpms"
+    - "codeready-builder-for-rhel-{{ ansible_distribution_major_version }}-x86_64-rpms"
+    - "rhel-{{ ansible_distribution_major_version }}-for-x86_64-supplementary-rpms"
+    - "rhel-{{ ansible_distribution_major_version }}-for-x86_64-highavailability-rpms"
+  loop_control:
+    label: "{{ item }}"
+  tags: redhat_repos
+  ignore_errors: true
+
+- name: Import required GPG keys
+  ansible.builtin.rpm_key:
+      state: present
+      key: "{{ item }}"
+  with_items:
+      - https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_distribution_major_version }}
+      - https://download1.rpmfusion.org/free/el/RPM-GPG-KEY-rpmfusion-free-el-{{ ansible_distribution_major_version }}
+      - https://download1.rpmfusion.org/nonfree/el/RPM-GPG-KEY-rpmfusion-nonfree-el-{{ ansible_distribution_major_version }}
+  tags: gpg_keys
+
+- name: Install Extra Repos
+  ansible.builtin.yum_repository:
+    name: "{{ item.name }}"
+    description: "Extra Repos for RedHat {{ ansible_distribution_major_version }} - {{ item.name | upper }} Repo"
+    baseurl: "{{ item.baseurl }}"
+    gpgcheck: true
+    gpgkey: "{{ item.gpgkey }}"
+    enabled: true
+    state: present
+    countme: false
+  loop:
+    - name: epel
+      baseurl: "https://dl.fedoraproject.org/pub/epel/$releasever/Everything/$basearch/"
+      gpgkey: "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_distribution_major_version }}"
+    - name: rpmfusion-free-updates
+      baseurl: "http://download1.rpmfusion.org/free/el/updates/{{ ansible_distribution_major_version }}/$basearch/"
+      gpgkey: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-rpmfusion-free-el-{{ ansible_distribution_major_version }}"
+    - name: rpmfusion-nonfree-updates
+      baseurl: "http://download1.rpmfusion.org/nonfree/el/updates/{{ ansible_distribution_major_version }}/$basearch/"
+      gpgkey: "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-rpmfusion-nonfree-el-{{ ansible_distribution_major_version }}"
+  loop_control:
+    label: "{{ item.name }}"
+  tags: extra_repos
+
+- name: Rebuild the DNF Cache
+  ansible.builtin.dnf:
+    update_cache: true
+  tags: rebuild_cache
+
+- name: Install Default Software
+  ansible.builtin.dnf:
+    state: present
+    name: "{{ item }}"
+  loop:
+    - usbutils
+    - file
+    - gnupg2
+    - curl
+    - autoconf
+    - automake
+    - cmake
+    - dbus-daemon
+    - dbus-glib
+    - dbus-glib-devel
+    - dbus-tools
+    - bind-utils
+    - bzip2
+    - gcc
+    - git
+    - btop
+    - jq
+    - make
+    - nfs-utils
+    - nmap
+    - screen
+    - python3 # RHEL 10.x defaults to Python3.12
+    - python3-devel
+    - python3-libs
+    - tar
+    - tmux
+    - tree
+    - vim
+    - wget
+    - yum-utils
+    - rsync
+    - diffutils
+    - binutils
+  tags: software
+
+- name: Update PIP
+  ansible.builtin.command:
+    cmd: /usr/bin/env python3 -m pip install pip --upgrade
+  register: pip_upgrade
+  changed_when: pip_upgrade.rc == 0
+  failed_when: pip_upgrade.rc != 0
+  tags: pip
+
+- name: System Update # noqa package-latest
+  ansible.builtin.dnf:
+    name: '*'
+    state: latest
+  register: system_update
+  tags: update
+
+- name: Reboot
+  ansible.builtin.reboot:
+    msg: "Rebooting for configuration changes to take effect"
+    connect_timeout: 5
+    reboot_timeout: 600
+  when: system_update.changed
+  tags: reboot
+...
