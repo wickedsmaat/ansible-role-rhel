@@ -1,4 +1,5 @@
-Match User misteralexander
+#jinja2: lstrip_blocks: True
+Match User {{ default_redhat_user.name }}
     AllowAgentForwarding no
     AllowTcpForwarding yes
     MaxAuthTries 5

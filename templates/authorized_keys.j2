@@ -1,4 +1,4 @@
 #jinja2: lstrip_blocks: True
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOQrkZPAQkz90SmjGhoa92QGEVvGZY87Yq3UdJUYMuVF Ansible Controller SSH Key
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAIu1GgChGYSYGk3bB1NPxVcpf7FX9sBYjqK7PxCd5yo Backup-SSH-Key
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICdP1ZAAlKFcS7oqnJnmOk5Yim2tJl6K8uapAYzTmlK6 SnyderBusinessAndTechnologyConsulting-(sba.tc)
+{% for key in ssh_authorized_keys %}
+{{ key.value | trim }}
+{% endfor %}

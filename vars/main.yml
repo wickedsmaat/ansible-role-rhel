@@ -1,1 +1,31 @@
 ---
+rhsm_sub_info:
+  state:
+  activationkey:
+  org_id:
+  syspurpose:
+    usage:
+    role:
+    service_level_agreement:
+    sync: true
+  force_register: true
+
+default_redhat_user:
+  name:
+  state:
+  create_home:
+  shell:
+  password:
+  update_password:
+
+default_redhat_root:
+  name:
+  state:
+  create_home:
+  shell:
+  password:
+  update_password:
+
+ssh_authorized_keys:
+  - value:
+...
