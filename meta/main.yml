@@ -10,5 +10,10 @@ galaxy_info:
     - redhat
     - el
     - linux
+
 dependencies: []
+
+collections:
+  - ansible.posix
+  - community.general
 ...

@@ -223,16 +223,15 @@
   loop_control:
     label: "{{ item }}"
   tags: redhat_repos
-  ignore_errors: true
 
 - name: Import required GPG keys
   ansible.builtin.rpm_key:
-      state: present
-      key: "{{ item }}"
+    state: present
+    key: "{{ item }}"
   with_items:
-      - https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_distribution_major_version }}
-      - https://download1.rpmfusion.org/free/el/RPM-GPG-KEY-rpmfusion-free-el-{{ ansible_distribution_major_version }}
-      - https://download1.rpmfusion.org/nonfree/el/RPM-GPG-KEY-rpmfusion-nonfree-el-{{ ansible_distribution_major_version }}
+    - https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-{{ ansible_distribution_major_version }}
+    - https://download1.rpmfusion.org/free/el/RPM-GPG-KEY-rpmfusion-free-el-{{ ansible_distribution_major_version }}
+    - https://download1.rpmfusion.org/nonfree/el/RPM-GPG-KEY-rpmfusion-nonfree-el-{{ ansible_distribution_major_version }}
   tags: gpg_keys
 
 - name: Install Extra Repos
