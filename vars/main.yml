@@ -28,4 +28,3 @@ default_redhat_root:
 
 ssh_authorized_keys:
   - value:
-...

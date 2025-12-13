@@ -1,19 +1,21 @@
 ---
 galaxy_info:
-  author: thisguyshouldworkforus
+  author: Alexander Snyder
   description: Ansible role to install and configure RedHat Enterprise Linux (RHEL) systems.
-  company: "Hire This Guy, LLC."
+  company: ThisGuyShouldWorkFor.Us
   license: MIT
-  min_ansible_version: '2.9'
+  min_ansible_version: "2.9"
+  platforms:
+    - name: EL # RedHat, and RHEL Clones
+
   galaxy_tags:
     - rhel
     - redhat
     - el
     - linux
 
-dependencies: []
-
 collections:
   - ansible.posix
   - community.general
-...
+
+dependencies: []

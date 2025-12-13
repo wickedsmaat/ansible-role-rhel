@@ -66,7 +66,7 @@
     dest: "{{ item.dest }}"
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   with_items:
     - { src: "files/ssh/00-default.conf", dest: "/etc/ssh/sshd_config.d/00-default.conf" }
     - { src: "files/ssh/10-ansible.conf", dest: "/etc/ssh/sshd_config.d/10-ansible.conf" }
@@ -79,7 +79,7 @@
     dest: "/etc/ssh/sshd_config.d/20-{{ default_redhat_user.name }}.conf"
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   tags: ssh_configs
 
 - name: Ensure the SSH Directory Exists
@@ -88,7 +88,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
   with_items:
     - { path: /root/.ssh, owner: root, group: root }
     - { path: /etc/skel/.ssh, owner: root, group: root }
@@ -108,7 +108,7 @@
     dest: "{{ item.dest }}"
     owner: root
     group: root
-    mode: '0440'
+    mode: "0440"
   with_items:
     - { src: templates/sudoers.j2, dest: "/etc/sudoers.d/010-ansible", name: "ansible" }
     - { src: templates/sudoers.j2, dest: "/etc/sudoers.d/020-{{ default_redhat_user.name }}", name: "{{ default_redhat_user.name }}" }
@@ -130,11 +130,22 @@
     dest: "{{ item.dest }}"
     owner: "{{ item.owner }}"
     group: "{{ item.group }}"
-    mode: '0644'
+    mode: "0644"
   with_items:
-    - { src: templates/authorized_keys.j2, dest: '/root/.ssh/authorized_keys', owner: root, group: root }
-    - { src: templates/authorized_keys.j2, dest: '/etc/skel/.ssh/authorized_keys', owner: root, group: root }
-    - { src: templates/authorized_keys.j2, dest: "/home/{{ default_redhat_user.name }}/.ssh/authorized_keys", owner: "{{ default_redhat_user.name }}", group: "{{ default_redhat_user.name }}" }
+    - src: templates/authorized_keys.j2
+      dest: "/root/.ssh/authorized_keys"
+      owner: root
+      group: root
+
+    - src: templates/authorized_keys.j2
+      dest: "/etc/skel/.ssh/authorized_keys"
+      owner: root
+      group: root
+
+    - src: templates/authorized_keys.j2
+      dest: "/home/{{ default_redhat_user.name }}/.ssh/authorized_keys"
+      owner: "{{ default_redhat_user.name }}"
+      group: "{{ default_redhat_user.name }}"
   tags: ssh_keys
 
 - name: Ensure SELinux is disabled
@@ -173,11 +184,11 @@
 - name: Configure DNF to use IPv4
   ansible.builtin.lineinfile:
     path: /etc/dnf/dnf.conf
-    line: 'ip_resolve=4'
-    insertafter: '^\[main\]'
+    line: "ip_resolve=4"
+    insertafter: "^\\[main\\]"
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   tags: ipv4
 
 - name: Remove Unwanted Packages
@@ -305,7 +316,7 @@
 
 - name: System Update # noqa package-latest
   ansible.builtin.dnf:
-    name: '*'
+    name: "*"
     state: latest
   register: system_update
   tags: update
@@ -317,4 +328,3 @@
     reboot_timeout: 600
   when: system_update.changed
   tags: reboot
-...
